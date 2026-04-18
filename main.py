@@ -1,9 +1,14 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 import sqlite3
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
+from pydantic import BaseModel
+
+class CapsuleInput(BaseModel):
+    content: str
+    unlock_at: str
 
 def parse_flexible_dates(date_str: str) -> str:
     parts = date_str.replace("-", "/").split("/")
@@ -58,13 +63,10 @@ def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS capsules (
-    id TEXT PRIMARY KEY,
-    content TEXT NOT NULL,
-    create_at TEXT NOT NULL,
-    unlock_at TEXT NOT NULL,
-    )
-                   """)
+    CREATE TABLE IF NOT EXISTS capsules (id TEXT PRIMARY KEY, content TEXT NOT NULL, created_at TEXT NOT NULL, unlock_at TEXT NOT NULL)
+    """)
+    conn.commit()
+    conn.close()
 
 def get_db():
     return sqlite3.connect(DB_PATH)
@@ -75,8 +77,8 @@ def insert_capsule(content: str, unlock_at: str):
     cursor = conn.cursor()
 
     cursor.execute("""
-    EXECUTE INTO capsules (id, content, created_at unlock_at)
-    VALUES (?, ?, ?, ?)""", (str(uuid.uuid4()), content, datetime.utcnow(), isoformat(), unlock_at))
+    INSERT INTO capsules (id, content, created_at, unlock_at)
+    VALUES (?, ?, ?, ?)""", (str(uuid.uuid4()), content, datetime.now(UTC).isoformat(), unlock_at))
 
     conn.commit()
     conn.close()
@@ -90,13 +92,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.on_event("statup")
+@app.on_event("startup")
 def startup():
     init_db()
 
 
-@app.get("/store")
-def hello():
-    return {"message": "hello"}
+@app.post("/store")
+def store(data: CapsuleInput):
+    content = data.content
+    unlock_raw = data.unlock_at
+
+    try:
+        parsed_date = parse_flexible_dates(unlock_raw)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    insert_capsule(content, parsed_date)
 
 uvicorn.run(app)
