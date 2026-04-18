@@ -5,6 +5,53 @@ import sqlite3
 import uuid
 from datetime import datetime
 
+def parse_flexible_dates(date_str: str) -> str:
+    parts = date_str.replace("-", "/").split("/")
+
+    if len(parts) != 3:
+        raise ValueError("Invalid date format")
+
+    a, b, c = parts
+
+    if len(a) == 4:
+        year = int(a)
+        x = int(b)
+        y = int(c)
+
+        if x > 12:
+            day = x 
+            month = y
+        elif y > 12:
+            month = x
+            day = y
+        else:
+            #assume MM/DD
+            month = x
+            day = y
+
+    elif len(c) == 4:
+        year = int(c)
+        x = int(a)
+        y = int(b)
+
+        if x > 12:
+            day = x
+            month = y
+        else:
+            month = x 
+            day = y 
+
+    else:
+        raise ValueError("Cannot determine")
+
+    try:
+        dt = datetime(year, month, day)
+    except:
+        raise ValueError("Invalid date values")
+
+    return dt.strftime("%Y-%m-%d")
+
+
 DB_PATH = "capsule.db"
 
 def init_db():
