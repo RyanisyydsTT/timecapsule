@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
-import sqlite3 
+import sqlite3
+import uuid
+from datetime import datetime
 
 DB_PATH = "capsule.db"
 
@@ -17,8 +19,20 @@ def init_db():
     )
                    """)
 
-def get_db()
-           return sqlite3.connect(DB_PATH)
+def get_db():
+    return sqlite3.connect(DB_PATH)
+
+
+def insert_capsule(content: str, unlock_at: str):
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    EXECUTE INTO capsules (id, content, created_at unlock_at)
+    VALUES (?, ?, ?, ?)""", (str(uuid.uuid4()), content, datetime.utcnow(), isoformat(), unlock_at))
+
+    conn.commit()
+    conn.close()
 
 app = FastAPI()
 
@@ -32,6 +46,7 @@ app.add_middleware(
 @app.on_event("statup")
 def startup():
     init_db()
+
 
 @app.get("/store")
 def hello():
