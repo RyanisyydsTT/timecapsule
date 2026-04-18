@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.security import HTTPBearer, HTTPAuthenticationCredentials
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 import sqlite3
@@ -9,6 +10,24 @@ from pydantic import BaseModel
 class CapsuleInput(BaseModel):
     content: str
     unlock_at: str
+
+class ObtainRequest(BaseModel):
+    username: str
+
+security = HTTPBearer()
+
+def verify_token(credentials: HTTPAuthenticationCredentials = Depends(security)) -> str:
+    token = credentials.credentials
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT username FROM users WHERE token = ?", (token,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    return row[0]
 
 def parse_flexible_dates(date_str: str) -> str:
     parts = date_str.replace("-", "/").split("/")
@@ -63,6 +82,9 @@ def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
+    CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, token TEXT NOT NULL, created_at TEXT NOT NULL)
+    """)
+    cursor.execute("""
     CREATE TABLE IF NOT EXISTS capsules (id TEXT PRIMARY KEY, content TEXT NOT NULL, created_at TEXT NOT NULL, unlock_at TEXT NOT NULL)
     """)
     conn.commit()
@@ -96,9 +118,37 @@ app.add_middleware(
 def startup():
     init_db()
 
+@app.post("/obtain")
+def obtain_token(data: ObtainRequest):
+    conn = get_db()
+    cursor = conn.cursor()
+
+    username = data.username.strip()
+    cursor.execute("SELECT username FROM users WHERE username = ?", (username,))
+    row = cursor.fetchone()
+
+    if row:
+        conn.close()
+        return {
+            "success": False,
+            "message": "username existed"
+        }
+
+    token = str(uuid.uuid4())
+
+    cursor.execute("INSERT INTO users (username, token, created_at) VALUES (?, ?, ?)", (username, token, datetime.now().isoformat()))
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "success": True,
+        "message": "account created!",
+        "token": token
+    }
 
 @app.post("/store")
-def store(data: CapsuleInput):
+def store(data: CapsuleInput, username: str = Depends(verify_token)):
     content = data.content
     unlock_raw = data.unlock_at
 
@@ -109,4 +159,10 @@ def store(data: CapsuleInput):
 
     insert_capsule(content, parsed_date)
 
-uvicorn.run(app)
+    return {
+        "success": True,
+        "message": "Capsule stored successfully"
+    }
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
