@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends
-from fastapi.security import HTTPBearer, HTTPAuthenticationCredentials
+from fastapi.security import HTTPBearer
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 import sqlite3
@@ -16,7 +16,7 @@ class ObtainRequest(BaseModel):
 
 security = HTTPBearer()
 
-def verify_token(credentials: HTTPAuthenticationCredentials = Depends(security)) -> str:
+def verify_token(credentials = Depends(security)) -> str:
     token = credentials.credentials
     conn = get_db()
     cursor = conn.cursor()
@@ -85,7 +85,7 @@ def init_db():
     CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, token TEXT NOT NULL, created_at TEXT NOT NULL)
     """)
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS capsules (id TEXT PRIMARY KEY, content TEXT NOT NULL, created_at TEXT NOT NULL, unlock_at TEXT NOT NULL)
+    CREATE TABLE IF NOT EXISTS capsules (id TEXT PRIMARY KEY, owner_username TEXT NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL, unlock_at TEXT NOT NULL, FOREIGN KEY (owner_username) REFERENCES users(username))
     """)
     conn.commit()
     conn.close()
@@ -94,13 +94,13 @@ def get_db():
     return sqlite3.connect(DB_PATH)
 
 
-def insert_capsule(content: str, unlock_at: str):
+def insert_capsule(owner_username: str,content: str, unlock_at: str):
     conn = get_db()
     cursor = conn.cursor()
 
     cursor.execute("""
-    INSERT INTO capsules (id, content, created_at, unlock_at)
-    VALUES (?, ?, ?, ?)""", (str(uuid.uuid4()), content, datetime.now(UTC).isoformat(), unlock_at))
+    INSERT INTO capsules (id, owner_username, content, created_at, unlock_at)
+    VALUES (?, ?, ?, ?, ?)""", (str(uuid.uuid4()), owner_username, content, datetime.now(UTC).isoformat(), unlock_at))
 
     conn.commit()
     conn.close()
@@ -157,12 +157,31 @@ def store(data: CapsuleInput, username: str = Depends(verify_token)):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    insert_capsule(content, parsed_date)
+    insert_capsule(username, content, parsed_date)
 
     return {
         "success": True,
         "message": "Capsule stored successfully"
     }
+
+@app.get("/list")
+def list_capsules(username: str = Depends(verify_token)):
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT id, created_at, unlock_at FROM capsules WHERE owner_username = ? ORDER BY created_at DESC", (username,))
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [
+        {
+            "id": row[0],
+            "created_at": row[1],
+            "unlock_at": row[2]
+        }
+        for row in rows
+    ]
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
