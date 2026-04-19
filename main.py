@@ -4,7 +4,7 @@ import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 import sqlite3
 import uuid
-from datetime import datetime, UTC
+from datetime import datetime, UTC, timezone
 from pydantic import BaseModel
 
 class CapsuleInput(BaseModel):
@@ -182,6 +182,44 @@ def list_capsules(username: str = Depends(verify_token)):
         }
         for row in rows
     ]
+
+@app.get("view")
+def unlock_capsule(username: str = Depends(verify_token)):
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute(
+    """
+    SELECT id, created_at, unlock_at, content
+    FROM capsules
+    WHERE owner_username = ?
+      AND unlock_at <= ?
+    ORDER BY created_at DESC
+    """,(username, datetime.now(timezone.utc).isoformat()))
+    
+    return [
+        {
+            "id": row[0],
+            "created_at": row[1],
+            "unlock_at": row[2],
+            "content": row[3]
+        }
+        for row in rows
+    ]
+
+
+@app.get("/stats")
+def getstat(username: str = Depends(verify_token)):
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT COUNT(*) FROM capsules")
+    count = cursor.fetchone()[0]
+
+    return {
+        "time": datetime.now(timezone.utc).isoformat(),
+        "counts": count
+    }
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
