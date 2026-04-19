@@ -9,18 +9,20 @@
 > Type: POST
 
 > Scheme:
-> ```json
+```json
   {
       "username": "ryanisyyds"
   }
+```
+```
 > ```
 > Response:
    ```json
-> {
+{
     "success": true,
     "message": "account created!",
     "token": "SENSORED"
-> }
+}
 > ```
 
 
@@ -29,20 +31,20 @@
 > Endpoint: `/store`
 > Type: POST
 > Scheme:
-> ```json
-> {
->     "content": "Hello",
->     "unlock_at": "2026/7/5"
-> }
+```json
+{
+    "content": "Hello",
+    "unlock_at": "2026/7/5"
+}
 > ```
 > Authorization: Bearer TOKEN
 
 > Response:
 ```json
-> {
->    "success": true,
->    "message": "Capsule stored successfully"
-> }
+{
+   "success": true,
+   "message": "Capsule stored successfully"
+}
 ```
 
 > ### List
@@ -54,18 +56,18 @@
 
 > Response:
 ```json
-> [
->     {
->         "id": "26cae396-8c0e-4214-83d2-25c9bd664364",
->         "created_at": "2026-04-19T05:04:58.077734+00:00",
->         "unlock_at": "2026-07-05"
->     },
->     {
->         "id": "de201d30-f210-4993-868d-c6a87e9e1ca4",
->         "created_at": "2026-04-18T09:13:24.673784+00:00",
->         "unlock_at": "2026-07-05"
->     }
-> ]
+ [
+     {
+         "id": "26cae396-8c0e-4214-83d2-25c9bd664364",
+         "created_at": "2026-04-19T05:04:58.077734+00:00",
+         "unlock_at": "2026-07-05"
+     },
+     {
+         "id": "de201d30-f210-4993-868d-c6a87e9e1ca4",
+         "created_at": "2026-04-18T09:13:24.673784+00:00",
+         "unlock_at": "2026-07-05"
+     }
+ ]
 ```
 
 >  ### Stats
@@ -77,10 +79,10 @@
 
 > Response:
 ```json
-> {
->     "time": "2026-04-19T05:15:44.901043+00:00",
->     "counts": 2
-> }
+{
+    "time": "2026-04-19T05:15:44.901043+00:00",
+    "counts": 2
+}
 ```
 
 ## Contributing
