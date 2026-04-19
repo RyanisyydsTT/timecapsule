@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.security import HTTPBearer
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,6 +6,9 @@ import sqlite3
 import uuid
 from datetime import datetime, UTC, timezone
 from pydantic import BaseModel
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
+import time
 
 class CapsuleInput(BaseModel):
     content: str
@@ -106,6 +109,30 @@ def insert_capsule(owner_username: str,content: str, unlock_at: str):
     conn.close()
 
 app = FastAPI()
+
+request_counter: int = 0
+last_request_time: float = time.time()
+rate_limit_window: int = 60
+max_requests_per_window: int = 100
+
+class RateLimiterMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        global last_request_time, request_counter
+
+        current_time = time.time()
+        if current_time - last_request_time > rate_limit_window:
+            request_counter = 0
+            last_request_time = current_time
+
+        request_counter += 1
+
+        if request_counter > max_requests_per_window:
+            return Response("Rate limit exceeded", status_code=429)
+
+        response = await call_next(request)
+        return response
+
+app.add_middleware(RateLimiterMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
