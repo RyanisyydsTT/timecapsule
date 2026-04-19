@@ -15,15 +15,15 @@
   }
 ```
 ```
-> ```
+```
 > Response:
-   ```json
+```json
 {
     "success": true,
     "message": "account created!",
     "token": "SENSORED"
 }
-> ```
+```
 
 
 > ### Store
@@ -36,7 +36,7 @@
     "content": "Hello",
     "unlock_at": "2026/7/5"
 }
-> ```
+```
 > Authorization: Bearer TOKEN
 
 > Response:
