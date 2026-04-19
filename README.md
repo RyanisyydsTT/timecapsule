@@ -1,6 +1,9 @@
 # Time Capsule
 > Time Capsule is a API service made w/ FastAPI, just as it’s name, it stores your story into a secured capsule database, once it’s the unlock day, send a GET request to get your memories!!
 
+
+> **Try the API on ``timecapsule.ryanisyyds.xyz``!!**
+
 ## Usage
 
 > ### Obtain Token
