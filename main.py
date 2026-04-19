@@ -108,7 +108,11 @@ def insert_capsule(owner_username: str,content: str, unlock_at: str):
     conn.commit()
     conn.close()
 
-app = FastAPI()
+app = FastAPI(
+    title="Time Capsule",
+    description="A secure API service that stores stories and memories in a capsule database. Send your messages now and retrieve them on the unlock date.",
+    version="1.0.0"
+)
 
 request_counter: int = 0
 last_request_time: float = time.time()
@@ -145,8 +149,9 @@ app.add_middleware(
 def startup():
     init_db()
 
-@app.post("/obtain")
+@app.post("/obtain", summary="Create Account & Obtain Token")
 def obtain_token(data: ObtainRequest):
+    """Generate a unique authentication token for a new user account."""
     conn = get_db()
     cursor = conn.cursor()
 
@@ -174,8 +179,9 @@ def obtain_token(data: ObtainRequest):
         "token": token
     }
 
-@app.post("/store")
+@app.post("/store", summary="Store a Capsule")
 def store(data: CapsuleInput, username: str = Depends(verify_token)):
+    """Save a message to be unlocked on a specified date."""
     content = data.content
     unlock_raw = data.unlock_at
 
@@ -191,8 +197,9 @@ def store(data: CapsuleInput, username: str = Depends(verify_token)):
         "message": "Capsule stored successfully"
     }
 
-@app.get("/list")
+@app.get("/list", summary="List All Capsules")
 def list_capsules(username: str = Depends(verify_token)):
+    """Retrieve all capsules created by the authenticated user."""
     conn = get_db()
     cursor = conn.cursor()
 
@@ -210,8 +217,9 @@ def list_capsules(username: str = Depends(verify_token)):
         for row in rows
     ]
 
-@app.get("view")
+@app.get("/view", summary="View Unlocked Capsules")
 def unlock_capsule(username: str = Depends(verify_token)):
+    """Retrieve all capsules that have reached their unlock date."""
     conn = get_db()
     cursor = conn.cursor()
 
@@ -223,7 +231,10 @@ def unlock_capsule(username: str = Depends(verify_token)):
       AND unlock_at <= ?
     ORDER BY created_at DESC
     """,(username, datetime.now(timezone.utc).isoformat()))
-    
+
+    rows = cursor.fetchall()
+    conn.close()
+
     return [
         {
             "id": row[0],
@@ -235,8 +246,9 @@ def unlock_capsule(username: str = Depends(verify_token)):
     ]
 
 
-@app.get("/stats")
+@app.get("/stats", summary="View Server Statistics")
 def getstat(username: str = Depends(verify_token)):
+    """Display total capsule count and current server timestamp."""
     conn = get_db()
     cursor = conn.cursor()
 
